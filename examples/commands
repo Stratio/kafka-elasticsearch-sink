@@ -1,0 +1,72 @@
+*** Add the plugins library directory to the Classpath ***
+
+export CLASSPATH=${KAFKA_PATH}/libs_connect/*
+
+persistent -> .bashrc
+
+
+*** Copy kafka connect library ***
+
+mkdir ${KAFKA_PATH}/libs_connect
+cp -r target/kafka-elasticsearch-sink-0.0.1-SNAPSHOT-jar-with-dependencies.jar ${KAFKA_PATH}/libs_connect/
+
+
+*** Run Connect distributed ***
+
+${KAFKA_PATH}/bin/connect-distributed.sh examples/connect-distributed.properties
+
+
+*** Run Connect standalone ***
+
+${KAFKA_PATH}/bin/connect-standalone.sh examples/connect-standalone.properties examples/kafkaconnectsink.properties
+
+
+*** Create ElasticSearch Index and Mapping ***
+
+curl -XPOST localhost:9200/dg-cluster -d '{
+    "settings" : {
+        "number_of_shards" : 1
+    },
+    "mappings" : {
+        "type1" : {
+            "properties" : {
+                "type-v0" : { "type" : "string", "index" : "not_analyzed" }
+            }
+        }
+    }
+}'
+
+
+*** Create ElasticSearch Connector in Kafka Connect ***
+
+curl -H "Content-Type:application/json" -X POST http://localhost:8160/connectors -d '{
+"name": "connector-dg",
+"config":{
+   "connector.class":"org.apache.kafka.connect.es.KafkaElasticSearchSinkConnector",
+   "topics":"metadata",
+   "elasticsearch.cluster.name":"dg-cluster",
+   "elasticsearch.hosts":"localhost:9300",
+   "elasticsearch.index":"dg-metadata",
+   "elasticsearch.document.name":"type-v0",
+   "elasticsearch.bulk.size":"250"
+}
+}'
+
+
+*** Create connect topics ***
+
+${KAFKA_PATH}/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic connect-status
+${KAFKA_PATH}/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic connect-configs
+${KAFKA_PATH}/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic connect-offsets
+${KAFKA_PATH}/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic metadata
+
+*** Create connect topics ***
+
+${KAFKA_PATH}/bin/kafka-topics.sh --delete --zookeeper localhost:2181 --topic connect-status
+${KAFKA_PATH}/bin/kafka-topics.sh --create --zookeeper localhost:2181 --topic connect-configs
+${KAFKA_PATH}/bin/kafka-topics.sh --create --zookeeper localhost:2181 --topic connect-offsets
+${KAFKA_PATH}/bin/kafka-topics.sh --create --zookeeper localhost:2181 --topic metadata
+
+*** Producer ***
+
+${KAFKA_PATH}/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic metadata
