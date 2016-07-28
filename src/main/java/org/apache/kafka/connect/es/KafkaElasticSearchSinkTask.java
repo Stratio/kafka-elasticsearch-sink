@@ -30,16 +30,20 @@ import java.util.*;
  */
 public class KafkaElasticSearchSinkTask extends SinkTask {
 
-    static final Logger log = LoggerFactory.getLogger(KafkaElasticSearchSinkTask.class);
+    private static final Logger log = LoggerFactory.getLogger(KafkaElasticSearchSinkTask.class);
 
-    Integer bulkSize;
-    String documentName;
-    String idField;
-    Client client;
-    Map<String, String> topicIndexes;
-    Map<String, String> topicMappings;
-    ActionType actionType;
-    KafkaElasticSearchSinkConnectorConfig config;
+    private KafkaElasticSearchSinkConnectorConfig config;
+    private Client client;
+    private Map<String, String> topicIndexes;
+    private Map<String, String> topicMappings;
+    private ActionType actionType;
+    private Integer bulkSize;
+    private String idField;
+
+    public KafkaElasticSearchSinkTask() {
+        topicIndexes = new HashMap<>(0);
+        topicMappings = new HashMap<>(0);
+    }
 
     @Override
     public String version() {
@@ -60,27 +64,14 @@ public class KafkaElasticSearchSinkTask extends SinkTask {
             throw new ConnectException("Couldn't start " + KafkaElasticSearchSinkConnector.class.getName() + " due to configuration error.", e);
         }
 
-        topicIndexes = new HashMap<>(0);
-        topicMappings = new HashMap<>(0);
-        String clusterName = props.get(KafkaElasticSearchSinkConnectorConfig.CLUSTER_NAME);
-        String hosts = props.get(KafkaElasticSearchSinkConnectorConfig.HOSTS);
-        documentName = props.get(KafkaElasticSearchSinkConnectorConfig.DOCUMENT_NAME);
-        String topics = props.get(KafkaElasticSearchSinkConnectorConfig.TOPICS);
-        String indexes = props.get(KafkaElasticSearchSinkConnectorConfig.INDEX);
-        String mappingTypes = props.get(KafkaElasticSearchSinkConnectorConfig.DOCUMENT_NAME);
-        actionType = config.getActionType();
-
-        if (props.containsKey(KafkaElasticSearchSinkConnectorConfig.DELETE_ID_FIELD)) {
-            idField = props.get(KafkaElasticSearchSinkConnectorConfig.DELETE_ID_FIELD);
-        } else {
-            idField = KafkaElasticSearchSinkConnectorConfig.DEFAULT_DELETE_ID_FIELD;
-        }
-
-        try {
-            bulkSize = Integer.parseInt(props.get(KafkaElasticSearchSinkConnectorConfig.BULK_SIZE));
-        } catch (Exception e) {
-            throw new ConnectException("Setting elasticsearch.bulk.size should be an integer");
-        }
+        String clusterName = config.getString(KafkaElasticSearchSinkConnectorConfig.CLUSTER_NAME);
+        String hosts = config.getString(KafkaElasticSearchSinkConnectorConfig.HOSTS);
+        String topics = config.getString(KafkaElasticSearchSinkConnectorConfig.TOPICS);
+        String indexes = config.getString(KafkaElasticSearchSinkConnectorConfig.INDEX);
+        String mappingTypes = config.getString(KafkaElasticSearchSinkConnectorConfig.MAPPING_TYPE);
+        actionType = config.getActionType(config.getString(KafkaElasticSearchSinkConnectorConfig.ACTION_TYPE));
+        idField = config.getString(KafkaElasticSearchSinkConnectorConfig.ID_FIELD);
+        bulkSize = config.getInt(KafkaElasticSearchSinkConnectorConfig.BULK_SIZE);
 
         List<String> hostsList = new ArrayList<>(Arrays.asList(hosts.replaceAll(" ", "").split(",")));
         List<String> topicsList = Arrays.asList(topics.replaceAll(" ", "").split(","));
@@ -98,9 +89,7 @@ public class KafkaElasticSearchSinkTask extends SinkTask {
 
         try {
             Settings settings = Settings.settingsBuilder().put("cluster.name", clusterName).build();
-
             client = TransportClient.builder().settings(settings).build();
-            log.info("topic" + topics);
             for (String host : hostsList) {
                 String address;
                 Integer port;
@@ -130,45 +119,47 @@ public class KafkaElasticSearchSinkTask extends SinkTask {
     public void put(Collection<SinkRecord> sinkRecords) {
         try {
             List<SinkRecord> records = new ArrayList<>(sinkRecords);
+
             for (int i = 0; i < records.size(); i++) {
                 BulkRequestBuilder bulkRequest = client.prepareBulk().setRefresh(Boolean.TRUE);
+
                 for (int j = 0; j < bulkSize && i < records.size(); j++, i++) {
                     SinkRecord record = records.get(i);
-
                     Map<String, Object> jsonMap = (Map<String, Object>) record.value();
 
-                    String index = topicIndexes.get(record.topic());
-                    String mappingType = topicMappings.get(record.topic());
-                    String id;
+                    if (!jsonMap.isEmpty()) {
+                        String index = topicIndexes.get(record.topic());
+                        String mappingType = topicMappings.get(record.topic());
+                        String id;
 
-                    switch (actionType) {
-                        case INDEX:
-                            bulkRequest.add(client.prepareIndex(index, mappingType).setSource(jsonMap));
-                            break;
-                        case DELETE:
-                            id = (String) jsonMap.get(idField);
-                            bulkRequest.add(Requests.deleteRequest(index).type(documentName).id(id));
-                            break;
-                        case UPDATE:
-                            id = (String) jsonMap.get(idField);
-                            bulkRequest.add(new UpdateRequest(index, documentName, id).doc(jsonMap));
-                            break;
-                        case UPSERT:
-                            id = (String) jsonMap.get(idField);
-                            IndexRequest indexRequest = new IndexRequest(index, documentName, id).source(jsonMap);
-                            bulkRequest.add(new UpdateRequest(index, documentName, id).doc(jsonMap)
-                                    .upsert(indexRequest));
-                            break;
-                        default:
-                            bulkRequest.add(client.prepareIndex(index, mappingType).setSource(jsonMap));
-                            break;
+                        switch (actionType) {
+                            case INSERT:
+                                bulkRequest.add(client.prepareIndex(index, mappingType).setSource(jsonMap));
+                                break;
+                            case DELETE:
+                                id = (String) jsonMap.get(idField);
+                                bulkRequest.add(Requests.deleteRequest(index).type(mappingType).id(id));
+                                break;
+                            case UPDATE:
+                                id = (String) jsonMap.get(idField);
+                                bulkRequest.add(new UpdateRequest(index, mappingType, id).doc(jsonMap));
+                                break;
+                            case UPSERT:
+                                id = (String) jsonMap.get(idField);
+                                IndexRequest indexRequest = new IndexRequest(index, mappingType, id).source(jsonMap);
+                                bulkRequest.add(new UpdateRequest(index, mappingType, id).doc(jsonMap)
+                                        .upsert(indexRequest));
+                                break;
+                        }
                     }
                 }
                 i--;
-                BulkResponse bulkResponse = bulkRequest.execute().actionGet();
-                if (bulkResponse.hasFailures()) {
-                    for (BulkItemResponse item : bulkResponse) {
-                        log.error(item.getFailureMessage());
+                if (bulkRequest.numberOfActions() > 0) {
+                    BulkResponse bulkResponse = bulkRequest.execute().actionGet();
+                    if (bulkResponse.hasFailures()) {
+                        for (BulkItemResponse item : bulkResponse) {
+                            log.error(item.getFailureMessage());
+                        }
                     }
                 }
             }
@@ -183,7 +174,62 @@ public class KafkaElasticSearchSinkTask extends SinkTask {
 
     @Override
     public void stop() {
-        //close connection
         client.close();
+    }
+
+    public KafkaElasticSearchSinkConnectorConfig getConfig() {
+        return config;
+    }
+
+    public void setConfig(KafkaElasticSearchSinkConnectorConfig config) {
+        this.config = config;
+    }
+
+    public Client getClient() {
+        return client;
+    }
+
+    public void setClient(Client client) {
+        this.client = client;
+    }
+
+    public Map<String, String> getTopicIndexes() {
+        return topicIndexes;
+    }
+
+    public void setTopicIndexes(Map<String, String> topicIndexes) {
+        this.topicIndexes = topicIndexes;
+    }
+
+    public Map<String, String> getTopicMappings() {
+        return topicMappings;
+    }
+
+    public void setTopicMappings(Map<String, String> topicMappings) {
+        this.topicMappings = topicMappings;
+    }
+
+    public ActionType getActionType() {
+        return actionType;
+    }
+
+    public void setActionType(ActionType actionType) {
+        this.actionType = actionType;
+    }
+
+    public Integer getBulkSize() {
+        return bulkSize;
+    }
+
+    public void setBulkSize(Integer bulkSize) {
+        this.bulkSize = bulkSize;
+    }
+
+    public String getIdField() {
+        return idField;
+    }
+
+    public void setIdField(String idField) {
+        this.idField = idField;
     }
 }

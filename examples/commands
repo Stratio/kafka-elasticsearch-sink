@@ -31,8 +31,8 @@ curl -H "Content-Type:application/json" -X POST http://localhost:8160/connectors
    "elasticsearch.cluster.name":"dg-cluster",
    "elasticsearch.hosts":"localhost:9300",
    "elasticsearch.index":"dg-metadata",
-   "elasticsearch.document.name":"type-v0",
-   "elasticsearch.bulk.size":"250"
+   "elasticsearch.mapping.type":"type-v0",
+   "elasticsearch.bulk.size":250
 }
 }'
 
