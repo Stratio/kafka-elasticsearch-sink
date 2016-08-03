@@ -21,7 +21,7 @@ ${KAFKA_PATH}/bin/connect-distributed.sh examples/connect-distributed.properties
 ${KAFKA_PATH}/bin/connect-standalone.sh examples/connect-standalone.properties examples/kafkaconnectsink.properties
 
 
-*** Create ElasticSearch Connector in Kafka Connect ***
+*** Create and run Elasticsearch Connector in Kafka Connect when running in distributed mode ***
 
 curl -H "Content-Type:application/json" -X POST http://localhost:8160/connectors -d '{
 "name": "connector-dg",
@@ -54,7 +54,7 @@ ${KAFKA_PATH}/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic
 event -> {"field1" : "1"}
 
 
-*** Create ElasticSearch Index and Mapping ***
+*** Create Elasticsearch Index and Mapping (the library create the mapping and the index automatically)***
 
 curl -XPOST localhost:9200/dg-cluster -d '{
     "settings" : {
