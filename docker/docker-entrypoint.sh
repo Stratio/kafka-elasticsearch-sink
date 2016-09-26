@@ -1,87 +1,103 @@
-#!/bin/bash -xe
- SPARTA_CONF_FILE=/etc/sds/sparta/application.conf
-  if [[ ! -v SPARK_VERSION ]]; then
-   SPARK_VERSION=spark-1.6.2
- fi
- if [[ ! -v HADOOP_SPARK_VERSION ]]; then
-   HADOOP_SPARK_VERSION=hadoop2.6
- fi
- if [[ ! -v HADOOP_VERSION ]]; then
-   HADOOP_VERSION=hadoop-2.7.1
- fi
- if [[ ! -v EXECUTION_MODE ]]; then
-   EXECUTION_MODE=local
- fi
- if [[ ! -v ZOOKEEPER_HOST ]]; then
-   ZOOKEEPER_HOST=localhost:2181
- fi
- if [[ ! -v HDFS_MASTER ]]; then
-   HDFS_MASTER=localhost
- fi
- if [[ ! -v HDFS_PORT ]]; then
-   HDFS_PORT=8020
- fi
- if [[ ! -v HDFS_USER_NAME ]]; then
-   HDFS_USER_NAME=stratio
- fi
- if [[ ! -v SPARK_MASTER ]]; then
-   SPARK_MASTER="local[*]"
- fi
-   if [[ ! -v MESOS_MASTER ]]; then
-   MESOS_MASTER=localhost:7077
- fi
- sed -i "s|executionMode.*|executionMode = \"${EXECUTION_MODE}\"|" ${SPARTA_CONF_FILE}
- sed -i "s|connectionString.*|connectionString = \""${ZOOKEEPER_HOST}"\"|" ${SPARTA_CONF_FILE}
- sed -i "s|hdfsMaster.*|hdfsMaster = \"${HDFS_MASTER}\"|" ${SPARTA_CONF_FILE}
- sed -i "s|hdfsPort.*|hdfsPort = \"${HDFS_PORT}\"|" ${SPARTA_CONF_FILE}
- sed -i "s|hadoopUserName.*|hadoopUserName = \"${HDFS_USER_NAME}\"|" ${SPARTA_CONF_FILE}
- if [[ ! -v EXECUTION_MODE || "${EXECUTION_MODE}" == "local" ]]; then
-   sed -i "s|spark.master.*|spark.master = \"${SPARK_MASTER}\"|" ${SPARTA_CONF_FILE}
- fi
- if [[ "${EXECUTION_MODE}" == "mesos" || "${EXECUTION_MODE}" == "yarn" || "${EXECUTION_MODE}" == "standalone" ]]; then
-   SPARK_HADOOP_VERSION_FILE="${SPARK_VERSION}-bin-${HADOOP_SPARK_VERSION}.tgz"
-   HADOOP_VERSION_FILE="${HADOOP_VERSION}.tar.gz"
-   CORE_SITE=core-site.xml
-   HDFS_SITE=hdfs-site.xml
-   YARN_SITE=yarn-site.xml.xml
-   MAPRED_SITE=mapred-site.xml
-   SPARK_HOME="/${SPARK_VERSION}-bin-${HADOOP_SPARK_VERSION}"
-   SPARTA_VARIABLES=/etc/default/sparta-variables
-   wget "http://apache.rediris.es/spark/${SPARK_VERSION}/${SPARK_HADOOP_VERSION_FILE}"
-   tar -xvzf ${SPARK_HADOOP_VERSION_FILE}
-   rm ${SPARK_HADOOP_VERSION_FILE}
-   wget "http://www.eu.apache.org/dist/hadoop/common/${HADOOP_VERSION}/${HADOOP_VERSION_FILE}"
-   tar -xvzf ${HADOOP_VERSION_FILE}
-   rm ${HADOOP_VERSION_FILE}
-   mkdir "/${HADOOP_VERSION}/conf"
-   wget "http://${HDFS_MASTER}:50070/conf"
-   cp conf "/${HADOOP_VERSION}/conf/${CORE_SITE}"
-   cp conf "/${HADOOP_VERSION}/conf/${HDFS_SITE}"
-   cp conf "/${HADOOP_VERSION}/conf/${YARN_SITE}"
-   cp conf "/${HADOOP_VERSION}/conf/${MAPRED_SITE}"
-   rm conf
-   echo "" >> ${SPARTA_VARIABLES}
-   echo "export HADOOP_HOME="/${HADOOP_VERSION}"" >> ${SPARTA_VARIABLES}
-   echo "export HADOOP_USER_NAME="/${HDFS_USER_NAME}"" >> ${SPARTA_VARIABLES}
-   echo "export HADOOP_CONF_DIR="/${HADOOP_VERSION}/conf"" >> ${SPARTA_VARIABLES}
-   echo "export SPARK_HOME="${SPARK_HOME}"" >> ${SPARTA_VARIABLES}
-   source "${SPARTA_VARIABLES}"
-   sed -i "/# checkpointPath/d" ${SPARTA_CONF_FILE}
-   sed -i "s|checkpointPath.*|checkpointPath = \"/user/stratio/sparta/checkpoint\"|" ${SPARTA_CONF_FILE}
- fi
- if [[ "${EXECUTION_MODE}" == "mesos" ]]; then
-   sed -i "s|sparkHome.*|sparkHome = \""${SPARK_HOME}"\"|" ${SPARTA_CONF_FILE}
-   sed -i "s|master = \"mesos.*|master = \""mesos://${MESOS_MASTER}"\"|" ${SPARTA_CONF_FILE}
- fi
- if [[ "${EXECUTION_MODE}" == "yarn" ]]; then
-   sed -i "s|sparkHome.*|sparkHome = \""${SPARK_HOME}"\"|" ${SPARTA_CONF_FILE}
- fi
- if [[ "${EXECUTION_MODE}" == "standalone" ]]; then
-   sed -i "s|sparkHome.*|sparkHome = \""${SPARK_HOME}"\"|" ${SPARTA_CONF_FILE}
-   sed -i "s|master = \"spark.*|master = \""spark://${SPARK_MASTER}"\"|" ${SPARTA_CONF_FILE}
- fi
- if [[ "${SSH}" == "true" ]]; then
-   /usr/sbin/sshd -e
- fi
- /etc/init.d/sparta start
- tail -F /var/log/sds/sparta/sparta.log
+#!/usr/bin/env bash
+
+set -o nounset \
+    -o verbose \
+    -o xtrace
+
+[ -f /etc/confluent/docker/apply-mesos-overrides ] && \
+	. /etc/confluent/docker/apply-mesos-overrides
+
+set -o errexit
+
+echo "===> ENV Variables ..."
+env | sort
+
+echo "===> User"
+id
+
+echo "===> Configuring ..."
+/etc/confluent/docker/configure
+
+if [[ ! -v CONNECT_TASK_NAME ]]; then
+   CONNECT_TASK_NAME=kafka-connect-task-name
+fi
+
+if [[ ! -v KAFKA_TOPICS ]]; then
+   KAFKA_TOPICS=topictest
+fi
+
+if [[ ! -v ELASTICSEARCH_HOSTS ]]; then
+   ELASTICSEARCH_HOSTS=localhost:9300
+fi
+
+if [[ ! -v ELASTICSEARCH_CLUSTER_NAME ]]; then
+   ELASTICSEARCH_CLUSTER_NAME=elasticsearch
+fi
+
+if [[ ! -v ELASTICSEARCH_INDEX ]]; then
+   ELASTICSEARCH_INDEX=connect-index
+fi
+
+if [[ ! -v ELASTICSEARCH_DOCUMENT_NAME ]]; then
+   ELASTICSEARCH_DOCUMENT_NAME=mapping-v1
+fi
+
+if [[ ! -v ELASTICSEARCH_BULK_SIZE ]]; then
+   ELASTICSEARCH_BULK_SIZE=250
+fi
+
+if [[ ! -v CONNECT_CONVERTER_ENABLE_SCHEMAS ]]; then
+   CONNECT_CONVERTER_ENABLE_SCHEMAS=false
+fi
+if [[ ! -v CONNECT_INTERNAL_CONVERTER_ENABLE_SCHEMAS ]]; then
+   CONNECT_INTERNAL_CONVERTER_ENABLE_SCHEMAS=false
+fi
+
+CONNECT_CONF_FILE=/etc/kafka-connect/kafka-connect.properties
+
+if [[ "${CONNECT_CONVERTER_ENABLE_SCHEMAS}" == "false" ]]; then
+  sed -i "s|key.converter.schemas.enable=true*|key.converter.schemas.enable=false|" $CONNECT_CONF_FILE
+  sed -i "s|value.converter.schemas.enable=true*|value.converter.schemas.enable=false|" $CONNECT_CONF_FILE
+  echo "key.converter.schemas.enable=false" >> $CONNECT_CONF_FILE
+  echo "value.converter.schemas.enable=false" >> $CONNECT_CONF_FILE
+fi
+
+if [[ "${CONNECT_INTERNAL_CONVERTER_ENABLE_SCHEMAS}" == "false" ]]; then
+  sed -i "s|internal.key.converter.schemas.enable=true*|internal.key.converter.schemas.enable=false|" $CONNECT_CONF_FILE
+  sed -i "s|internal.value.converter.schemas.enable=true*|internal.value.converter.schemas.enable=false|" $CONNECT_CONF_FILE
+  echo "internal.key.converter.schemas.enable=false" >> $CONNECT_CONF_FILE
+  echo "internal.value.converter.schemas.enable=false" >> $CONNECT_CONF_FILE
+fi
+
+echo "===> Running preflight checks ... "
+/etc/confluent/docker/ensure
+
+echo "===> Launching Kafka Connect ... "
+exec /etc/confluent/docker/launch &
+
+echo "===> Waiting for TCP connection to Kafka Connect ... "
+while ! nc -w 1 127.0.0.1 8083
+do
+  sleep 1s
+done
+echo -n "done!"
+echo "===> Kafka Connect Up"
+
+echo "===> Sending tasks to Kafka Connect ..."
+
+TASK_FILE=/etc/kafka-connect-tasks/elasticsearch-task.json
+
+echo "===> Applying configuration to ${TASK_FILE}"
+
+sed -i "s|\"name\":\"kafka.*|\"name\":\"${CONNECT_TASK_NAME}\",|" $TASK_FILE
+sed -i "s|\"topics.*|\"topics\":\"${KAFKA_TOPICS}\",|" $TASK_FILE
+sed -i "s|\"elasticsearch.hosts.*|\"elasticsearch.hosts\":\"${ELASTICSEARCH_HOSTS}\",|" $TASK_FILE
+sed -i "s|\"elasticsearch.cluster.name.*|\"elasticsearch.cluster.name\":\"${ELASTICSEARCH_CLUSTER_NAME}\",|" $TASK_FILE
+sed -i "s|\"elasticsearch.index.*|\"elasticsearch.index\":\"${ELASTICSEARCH_INDEX}\",|" $TASK_FILE
+sed -i "s|\"elasticsearch.document.name.*|\"elasticsearch.document.name\":\"${ELASTICSEARCH_DOCUMENT_NAME}\",|" $TASK_FILE
+sed -i "s|\"elasticsearch.bulk.size.*|\"elasticsearch.bulk.size\":\"${ELASTICSEARCH_BULK_SIZE}\"|" $TASK_FILE
+
+echo "===> Sending task to Kafka Connect ... "
+curl -H "Content-Type: application/json; charset=UTF-8" -X POST http://localhost:8083/connectors -d @${TASK_FILE}
+
+tail -f /dev/null
