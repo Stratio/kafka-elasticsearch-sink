@@ -1,6 +1,6 @@
 FROM dbtucker/cp-kafka-connect:3.0.0
 
-ADD library/kafka-elasticsearch-sink-0.0.1.jar /etc/kafka-connect/jars/
+ADD library/kafka-elasticsearch-sink-0.1.0.jar /etc/kafka-connect/jars/
 RUN rm -rf /usr/share/java/kafka-connect-hdfs
 RUN rm -rf /usr/share/java/kafka-connect-jdbc
 RUN rm /usr/share/java/confluent-common/netty-3.2.2.Final.jar

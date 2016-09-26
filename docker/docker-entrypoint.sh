@@ -38,12 +38,20 @@ if [[ ! -v ELASTICSEARCH_INDEX ]]; then
    ELASTICSEARCH_INDEX=connect-index
 fi
 
-if [[ ! -v ELASTICSEARCH_DOCUMENT_NAME ]]; then
-   ELASTICSEARCH_DOCUMENT_NAME=mapping-v1
+if [[ ! -v ELASTICSEARCH_MAPPING_TYPE ]]; then
+   ELASTICSEARCH_MAPPING_TYPE=mapping-v1
 fi
 
 if [[ ! -v ELASTICSEARCH_BULK_SIZE ]]; then
    ELASTICSEARCH_BULK_SIZE=250
+fi
+
+if [[ ! -v ELASTICSEARCH_ID_FIELD ]]; then
+   ELASTICSEARCH_ID_FIELD=id
+fi
+
+if [[ ! -v ELASTICSEARCH_ACTION_TYPE ]]; then
+   ELASTICSEARCH_ACTION_TYPE=insert
 fi
 
 if [[ ! -v CONNECT_CONVERTER_ENABLE_SCHEMAS ]]; then
@@ -91,10 +99,12 @@ echo "===> Applying configuration to ${TASK_FILE}"
 
 sed -i "s|\"name\":\"kafka.*|\"name\":\"${CONNECT_TASK_NAME}\",|" $TASK_FILE
 sed -i "s|\"topics.*|\"topics\":\"${KAFKA_TOPICS}\",|" $TASK_FILE
+sed -i "s|\"action.type.*|\"action.type\":\"${ELASTICSEARCH_ACTION_TYPE}\",|" $TASK_FILE
 sed -i "s|\"elasticsearch.hosts.*|\"elasticsearch.hosts\":\"${ELASTICSEARCH_HOSTS}\",|" $TASK_FILE
 sed -i "s|\"elasticsearch.cluster.name.*|\"elasticsearch.cluster.name\":\"${ELASTICSEARCH_CLUSTER_NAME}\",|" $TASK_FILE
 sed -i "s|\"elasticsearch.index.*|\"elasticsearch.index\":\"${ELASTICSEARCH_INDEX}\",|" $TASK_FILE
-sed -i "s|\"elasticsearch.document.name.*|\"elasticsearch.document.name\":\"${ELASTICSEARCH_DOCUMENT_NAME}\",|" $TASK_FILE
+sed -i "s|\"elasticsearch.mapping.type.*|\"elasticsearch.mapping.type\":\"${ELASTICSEARCH_MAPPING_TYPE}\",|" $TASK_FILE
+sed -i "s|\"elasticsearch.id.field.*|\"elasticsearch.id.field\":\"${ELASTICSEARCH_ID_FIELD}\",|" $TASK_FILE
 sed -i "s|\"elasticsearch.bulk.size.*|\"elasticsearch.bulk.size\":\"${ELASTICSEARCH_BULK_SIZE}\"|" $TASK_FILE
 
 echo "===> Sending task to Kafka Connect ... "

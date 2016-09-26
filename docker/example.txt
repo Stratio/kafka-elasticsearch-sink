@@ -15,6 +15,6 @@ docker run -it
   --env ELASTICSEARCH_CLUSTER_NAME=dg-cluster
   --env ELASTICSEARCH_HOSTS=elasticsearch:9300
   --env ELASTICSEARCH_INDEX=dg-metadata
-  --env ELASTICSEARCH_DOCUMENT_NAME=type-v0
+  --env ELASTICSEARCH_MAPPING_TYPE=type-v0
   --env ELASTICSEARCH_BULK_SIZE=250
   --net=host -p 8083:8083 qa.stratio.com/kafka-elasticsearch-sink
