@@ -1,0 +1,14 @@
+{
+  "name":"kafka-connect-task-name",
+  "config":{
+    "connector.class":"org.apache.kafka.connect.es.KafkaElasticSearchSinkConnector",
+    "topics":"topictest",
+    "action.type":"insert",
+    "elasticsearch.cluster.name":"elasticsearch",
+    "elasticsearch.hosts":"localhost:9300",
+    "elasticsearch.index":"connect-index",
+    "elasticsearch.mapping.type":"mapping-v1",
+    "elasticsearch.idField":"id",
+    "elasticsearch.bulk.size":"250"
+  }
+}

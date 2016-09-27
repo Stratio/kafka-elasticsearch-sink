@@ -1,0 +1,20 @@
+docker run -it
+  --env CONNECT_BOOTSTRAP_SERVERS=kafka:9092
+  --env CONNECT_GROUP_ID=mesos-connect-group
+  --env CONNECT_CONFIG_STORAGE_TOPIC=mesos-connect-configs
+  --env CONNECT_OFFSET_STORAGE_TOPIC=mesos-connect-offsets
+  --env CONNECT_STATUS_STORAGE_TOPIC=mesos-connect-status
+  --env CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+  --env CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+  --env CONNECT_INTERNAL_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+  --env CONNECT_INTERNAL_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+  --env CONNECT_REST_ADVERTISED_HOST_NAME=localhost
+  --env CONNECT_ZOOKEEPER_CONNECT=zookeeper:2181
+  --env CONNECT_TASK_NAME=connector-dg
+  --env KAFKA_TOPICS=metadata
+  --env ELASTICSEARCH_CLUSTER_NAME=dg-cluster
+  --env ELASTICSEARCH_HOSTS=elasticsearch:9300
+  --env ELASTICSEARCH_INDEX=dg-metadata
+  --env ELASTICSEARCH_MAPPING_TYPE=type-v0
+  --env ELASTICSEARCH_BULK_SIZE=250
+  --net=host -p 8083:8083 qa.stratio.com/kafka-elasticsearch-sink
