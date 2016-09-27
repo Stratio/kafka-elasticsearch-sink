@@ -1,7 +1,7 @@
 FROM dbtucker/cp-kafka-connect:3.0.0
 
-ARG LIBRARY_VERSION
-ADD "target/kafka-elasticsearch-sink-${LIBRARY_VERSION}-jar-with-dependencies.jar" /etc/kafka-connect/jars/
+ARG VERSION
+ADD "target/kafka-elasticsearch-sink-${VERSION}-jar-with-dependencies.jar" /etc/kafka-connect/jars/
 
 # Delete library dependecies for hdfs and jdbc connect
 RUN rm -rf /usr/share/java/kafka-connect-hdfs

@@ -3,7 +3,7 @@ mvn clean install
 
 
 Build the Docker container:
-docker build --build-arg LIBRARY_VERSION=0.1.0-SNAPSHOT -f Dockerfile -t kafka-elasticsearch-sink .
+docker build --build-arg VERSION=0.1.0-SNAPSHOT -f Dockerfile -t kafka-elasticsearch-sink .
 
 
 Run the generated Docker container:
