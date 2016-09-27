@@ -9,8 +9,8 @@ RUN rm /usr/share/java/confluent-common/netty-3.2.2.Final.jar
 ADD docker/elasticsearch-task.json /etc/kafka-connect-tasks/
 
 # entrypoint
-ADD docker/docker-entrypoint.sh /etc/docker-entrypoint.sh
+ADD docker/bootstrap.sh /etc/bootstrap.sh
 RUN chown root:root /etc/docker-entrypoint.sh
 RUN chmod 700 /etc/docker-entrypoint.sh
 
-ENTRYPOINT ["/etc/docker-entrypoint.sh"]
+ENTRYPOINT ["/etc/bootstrap.sh"]
