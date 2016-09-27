@@ -1,3 +1,12 @@
+First build the library jar:
+mvn clean install
+
+
+Build the Docker container:
+docker build --build-arg LIBRARY_VERSION=0.1.0-SNAPSHOT -f Dockerfile -t kafka-elasticsearch-sink .
+
+
+Run the generated Docker container:
 docker run -it
   --env CONNECT_BOOTSTRAP_SERVERS=kafka:9092
   --env CONNECT_GROUP_ID=mesos-connect-group
@@ -17,4 +26,6 @@ docker run -it
   --env ELASTICSEARCH_INDEX=dg-metadata
   --env ELASTICSEARCH_MAPPING_TYPE=type-v0
   --env ELASTICSEARCH_BULK_SIZE=250
-  --net=host -p 8083:8083 qa.stratio.com/kafka-elasticsearch-sink
+  --env ELASTICSEARCH_ACTION_TYPE=insert
+  --env ELASTICSEARCH_ID_FIELD=id
+  --net=host -p 8083:8083 kafka-elasticsearch-sink
