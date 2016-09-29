@@ -96,7 +96,7 @@ echo "===> Creating topics in Kafka"
 topics=$(echo $KAFKA_TOPICS | tr "," "\n")
 for topic in $topics
 do
-   "===> Creating topic $topic in Kafka"
+   echo "===> Creating topic $topic in Kafka"
    /usr/bin/kafka-topics --create --zookeeper $CONNECT_ZOOKEEPER_CONNECT --replication-factor $KAFKA_TOPIC_REPLICATION_FACTOR --partitions $KAFKA_TOPIC_PARTITIONS --topic $topic
 done
 
