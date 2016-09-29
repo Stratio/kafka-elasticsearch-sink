@@ -26,6 +26,18 @@ if [[ ! -v KAFKA_TOPICS ]]; then
    KAFKA_TOPICS=topictest
 fi
 
+if [[ ! -v KAFKA_TOPIC_REPLICATION_FACTOR ]]; then
+   KAFKA_TOPIC_REPLICATION_FACTOR=1
+fi
+
+if [[ ! -v KAFKA_TOPIC_PARTITIONS ]]; then
+   KAFKA_TOPIC_PARTITIONS=1
+fi
+
+if [[ ! -v KAFKA_TOPICS ]]; then
+   KAFKA_TOPICS=topictest
+fi
+
 if [[ ! -v ELASTICSEARCH_HOSTS ]]; then
    ELASTICSEARCH_HOSTS=localhost:9300
 fi
@@ -80,6 +92,14 @@ fi
 echo "===> Running preflight checks ... "
 /etc/confluent/docker/ensure
 
+echo "===> Creating topics in Kafka"
+topics=$(echo $KAFKA_TOPICS | tr "," "\n")
+for topic in $topics
+do
+   "===> Creating topic $topic in Kafka"
+   /usr/bin/kafka-topics --create --zookeeper $CONNECT_ZOOKEEPER_CONNECT --replication-factor $KAFKA_TOPIC_REPLICATION_FACTOR --partitions $KAFKA_TOPIC_PARTITIONS --topic $topic
+done
+
 echo "===> Launching Kafka Connect ... "
 exec /etc/confluent/docker/launch &
 
@@ -92,11 +112,9 @@ echo -n "done!"
 echo "===> Kafka Connect Up"
 
 echo "===> Sending tasks to Kafka Connect ..."
-
 TASK_FILE=/etc/kafka-connect-tasks/elasticsearch-task.json
 
 echo "===> Applying configuration to ${TASK_FILE}"
-
 sed -i "s|\"name\":\"kafka.*|\"name\":\"${CONNECT_TASK_NAME}\",|" $TASK_FILE
 sed -i "s|\"topics.*|\"topics\":\"${KAFKA_TOPICS}\",|" $TASK_FILE
 sed -i "s|\"action.type.*|\"action.type\":\"${ELASTICSEARCH_ACTION_TYPE}\",|" $TASK_FILE
