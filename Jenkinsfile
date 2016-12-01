@@ -18,13 +18,8 @@ hose {
         config ->
             doCompile(config)
 
-            parallel(failFast: config.FAILFAST)
-
             doPackage(config)
 
-            parallel(
-                DOCKER: {doDocker(config)},
-                failFast: config.FAILFAST)
-
+            doDocker(config)
     }
 }
